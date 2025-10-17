@@ -1,0 +1,48 @@
+source:
+  type: "rest"
+  base_url: "https://<comanage-fqdn>/registry"
+  api_user: "<comanage-api-user>"
+  api_key_value: "<comanage-api-key-value>"
+  co_id: 3
+  verify_ssl: false
+  groups_prefix: "gl:"
+  endpoints:
+    list_groups:     "co_groups.json"
+    group_members:   "co_group_members.json"
+    email_addresses: "email_addresses.json"
+
+# GitLab 
+gitlab:
+  env_map:
+    prod: "https://<gitlab-fdqn>"
+  token_value: "<user-admin-token>"
+  verify_ssl: false
+  protect_never_remove: []
+
+  auto_create_groups:  true   
+  auto_create_projects: true   
+  default_visibility:  "private"  
+  root_group: ""  
+
+# Papéis
+roles:
+  guest:      10
+  reporter:   20
+  ro:         20
+  dev:        30
+  developer:  30
+  maint:      40
+  maintainer: 40
+  owner:      50
+
+# Políticas
+policies:
+  - match: "^gl:(?P<project>[^:]+):(?P<repo>[^:]+):(?P<role>[^:]+)$"
+    mode: "project"
+    remove_absent: true
+
+run:
+  dry_run: false                
+  interval_seconds: 300
+  once: false                 
+  pending_db: "pending.json"

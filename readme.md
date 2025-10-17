@@ -1,4 +1,4 @@
-# comanage-gitlab-sync
+# comanage-gitlab-connector
 
 Synchronization tool between **COmanage** and **GitLab** that automates access provisioning.
 The application reads groups defined in COmanage, optionally creates the corresponding hierarchy

@@ -3,7 +3,7 @@ source:
   base_url: "https://<comanage-fqdn>/registry"
   api_user: "<comanage-api-user>"
   api_key_value: "<comanage-api-key-value>"
-  co_id: 3
+  co_id: <co-id>
   verify_ssl: false
   groups_prefix: "gl:"
   endpoints:

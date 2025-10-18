@@ -18,6 +18,9 @@ members, and removes absent users based on configurable policies.
 ## Requirements
 - Python 3.9+
 - Access to a COmanage Registry via API (Basic Auth)
+    - Configure Self-Signup with an approval flow.
+    - Use an auto-incrementing reference identifier as the user's assigned ID.
+    - Enable Given Name, Family Name, and Email attributes by default.
 - A GitLab Personal Access Token with write permissions on groups/projects
 
 ## Installation
@@ -28,7 +31,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
 
 ## Configuration
 Modify the `config.yaml` file according to your environment and credentials.

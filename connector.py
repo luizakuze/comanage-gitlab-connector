@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List, Union, NoReturn
 from dataclasses import dataclass, field
 from time import sleep
 from functools import lru_cache
+from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -131,8 +132,8 @@ class COmanageAPI:
         """
         Workaround de bug: NÃO usar email_addresses?search.mail (gera 500).
         Em vez disso:
-        1) co_people.json?coid=<CO>&search.mail=<mail>  → pega CoPerson Id
-        2) co_org_identity_links.json?copersonid=<Id>   → retorna os links
+        1) co_people.json?coid=<CO>&search.mail=<mail>  -> pega CoPerson Id
+        2) co_org_identity_links.json?copersonid=<Id>   -> retorna os links
         """
         if not mail:
             raise COmanageAPIError("Empty mail provided for OrgIdentity search")
@@ -235,8 +236,8 @@ class COmanageAPI:
     def get_co_person_id(self, identifier: str) -> Optional[int]:
         """
         Resolve CoPersonId:
-          - Se parecer e-mail → via email_addresses (+ links)
-          - Senão → via org_identities (+ links)
+          - Se parecer e-mail -> via email_addresses (+ links)
+          - Senão -> via org_identities (+ links)
         """
         if not identifier:
             raise COmanageAPIError("Empty identifier provided for CoPersonId lookup")
@@ -265,7 +266,6 @@ class COmanageAPI:
             org_identity = self.get_org_identity_by_identifier(identifier) or {}
             return _co_person_from_links(org_identity)
         except COmanageAPIError:
-            # Como fallback extra, se o "identifier" era de fato um e-mail mal passado
             if _looks_like_mail(identifier):
                 links = self.get_org_identity_by_mail(identifier)
                 return _co_person_from_links(links)
@@ -385,7 +385,6 @@ class COmanageUser:
 
         logger.debug("User %s has co_person_id %s", identifier, self.co_person_id)
 
-        # >>> Corrigido: não usar assert; levantar erro controlado
         if not self.co_person_id:
             raise COmanageAPIError(
                 f"No matching user found in COmanage (identifier: {identifier})",
@@ -431,13 +430,30 @@ class COmanageUser:
         return self.__api
 
     def __get_identifier_uid(self) -> Optional[Dict[str, Any]]:
-        identifiers = self.api.get_identifiers(co_person_id=self.co_person_id)
-        preferred_types = {"uid", "eppn", "reference"}
-        for identifier in identifiers or []:
-            if identifier.get("Type") in preferred_types:
-                return identifier
+        """
+        Retorna o identificador de login do COmanage para este CoPerson,
+        aceitando apenas Type == 'reference'.
+        """
+        try:
+            identifiers = self.api.get_identifiers(co_person_id=self.co_person_id) or []
+        except Exception as e:
+            logger.exception(
+                "Failed to fetch identifiers for CoPerson %s: %s", self.co_person_id, e
+            )
+            return None
+
+        preferred_types = {"reference"}  # identificador único de usuário COmanage
+
+        for it in identifiers:
+            t = (it.get("Type") or "").strip().lower()
+            if t in preferred_types:
+                return it
+
         logger.warning(
-            "No matching identifiers found in COmanage: %s", self.co_person_id
+            "No matching identifiers found for CoPerson %s (wanted: %s). Got: %s",
+            self.co_person_id,
+            ", ".join(sorted(preferred_types)),
+            [i.get("Type") for i in identifiers],
         )
         return None
 
@@ -540,10 +556,10 @@ class COmanageAccountLinkingMicroService(ResponseMicroService):
           - Tenta localizar o usuário por uma LISTA de candidatos (tudo que veio do IdP):
               [user_id_attribute, eduPersonUniqueId (todos os valores), eppn,
                eduPersonPrincipalName, edupersontargetedid, sub, eptid, mail]
-          - Se algum resolver CoPerson → checa status e segue.
+          - Se algum resolver CoPerson -> checa status e segue.
           - Se nenhum resolver:
-                • tenta por e-mail (se disponível) — erros 500/401 viram "não achou".
-                • se deny_on_missing=True → bloqueia com mensagem amigável.
+                • tenta por e-mail (se disponível) - erros 500/401 viram "não achou".
+                • se deny_on_missing=True -> bloqueia com mensagem amigável.
         """
         # 0) Apenas nos backends permitidos
         allowed = {b.get("name") for b in (self.target_backends or []) if b.get("name")}
@@ -558,16 +574,15 @@ class COmanageAccountLinkingMicroService(ResponseMicroService):
             v = attrs.get(key) or []
             return [x for x in v if isinstance(x, str) and x.strip()]
 
-        # eduPersonUniqueId pode vir com vários valores (sub, eptid, eppn, etc.) — preservar todos
         candidates_ordered: List[str] = []
         seen = set()
 
         for key in [
-            self.user_id_attribute,  # preferido
-            "eduPersonUniqueId",  # todos os valores
+            self.user_id_attribute, 
+            "eduPersonUniqueId", 
             "eppn",
             "eduPersonPrincipalName",
-            "edupersontargetedid",  # mapeado do 'sub' em alguns fluxos SAML
+            "edupersontargetedid",  
             "sub",
             "eptid",
             "mail",
@@ -606,7 +621,6 @@ class COmanageAccountLinkingMicroService(ResponseMicroService):
                 last_primary_error = e
                 continue
 
-        # 3) Fallback por e-mail (quando autorizado/funcional)
         try:
             if not email:
                 raise COmanageAPIError("Missing mail for fallback lookup")
@@ -641,7 +655,7 @@ class COmanageAccountLinkingMicroService(ResponseMicroService):
 
                 return Redirect(url)
 
-            # Sem URL de matrícula configurada → comportamento antigo
+            # Sem URL de matrícula configurada -> comportamento antigo
 
             raise SATOSAAuthenticationError(
                 context.state,
@@ -717,8 +731,8 @@ def filter_idp_groups(
     prefix: str, groups: List[Dict[str, Any]]
 ) -> Dict[str, Dict[str, Any]]:
     """
-    Filtra grupos do tipo 'S' que começam com <prefix>_ e (por segurança)
-    requer 'Open' True (ou ausente → True).
+    Filtra grupos do tipo 'S' que começam com <prefix>_ e  
+    requer 'Open' True (ou ausente -> True).
     """
     response = {}
     logger.info("---> GROUPS: %s", groups)
